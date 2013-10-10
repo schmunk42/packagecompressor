@@ -31,6 +31,14 @@ class PackageCompressor extends CClientScript
     public $copyCssImages = false;
 
     /**
+     * @var asset-files mapping
+     * Files defined in this array (same format as $scriptMap) are NOT remapped before package compression.
+     * You can use this parameter to override the client-script registration of files which are published as an asset, 
+     * but also defined in a package. Example: Files set to false are included in packages, but not stand-alone.
+     */
+    public $assetsScriptMap = array();
+
+    /**
      * If this is enabled, during compression all other requests will wait until the compressing
      * process has completed. If disabled, the uncompressed files will be delivered for these
      * requests. This should prevent the thundering herd problem.
@@ -245,6 +253,10 @@ class PackageCompressor extends CClientScript
 
         $this->renderCoreScripts();
 
+        // merge scripts from assetsScriptMap, if compression is enabled, since the files have been bundles into packages
+        if ($this->enableCompression) {
+            $this->scriptMap = CMap::mergeArray($this->scriptMap, $this->assetsScriptMap);
+        }
         if(!empty($this->scriptMap))
             $this->remapScripts();
 
