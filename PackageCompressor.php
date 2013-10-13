@@ -23,12 +23,12 @@ class PackageCompressor extends CClientScript
     public $combineOnly = false;
 
     /**
-     * @var bool wheter to copy images from combined CSS files to output directory
+     * @var bool wheter to rewrite url in CSS files to an absolute path
      * Only effective when $enableCompression is set to "true"
      *
      * Note: Workaround for https://github.com/yiisoft/yii/issues/1033
      */
-    public $copyCssImages = false;
+    public $rewriteCssImages = false;
 
     /**
      * @var asset-files mapping
@@ -145,8 +145,14 @@ class PackageCompressor extends CClientScript
         {
             $files  = array();
             $urls   = array();
-            foreach(array_keys($this->cssFiles) as $file)
-                $files[] = $basePath.$file;
+
+            foreach(array_keys($this->cssFiles) as $file) {
+                $f = $basePath.$file;
+                if ($this->rewriteCssImages) {
+                    file_put_contents($f, Minify_CSS_UriRewriter::rewrite(file_get_contents($f), dirname($f), $basePath));
+                }
+                $files[] = $f;
+            }
 
             $fileName = $this->compressFiles($name,'css',$files);
             if(isset($this->packages[$name]['baseUrl']))
@@ -165,15 +171,6 @@ class PackageCompressor extends CClientScript
             {
                 $urls[] = $am->publish($fileName,true);    // URL to compressed file
                 $destFile = $am->getPublishedPath($fileName,true);
-            }
-
-            // copy images
-            if ($this->copyCssImages) foreach (array_keys($this->cssFiles) as $file) {
-                CFileHelper::copyDirectory(
-                    dirname($basePath . $file),
-                    dirname($destFile),
-                    array('fileTypes' => array('jpg', 'png', 'gif'))
-                );
             }
 
             $info['css'] = array(
