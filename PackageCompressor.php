@@ -23,18 +23,12 @@ class PackageCompressor extends CClientScript
     public $combineOnly = false;
 
     /**
-     * @var bool wheter to rewrite url in CSS files to an absolute path
      * Only effective when $enableCompression is set to "true"
      *
-     * Note: Workaround for https://github.com/yiisoft/yii/issues/1033
+     * @var bool wheter to rewrite URLs in CSS files to an absolute path before combining
      */
-    public $rewriteCssImages = false;
+    public $rewriteCssUris = false;
 
-    /**
-     * @var asset-files mapping
-     * Files defined in this array (same format as $scriptMap) are NOT remapped before package compression.
-     * You can use this parameter to override the client-script registration of files which are published as an asset, 
-     * but also defined in a package. Example: Files set to false are included in packages, but not stand-alone.
     /**
      * Files defined in this array ('foo.js','bar.js') are available for package compression but not registered as a
      * stand-alone file.
@@ -110,7 +104,7 @@ class PackageCompressor extends CClientScript
 
         $info       = array();
         $am         = Yii::app()->assetManager;
-        $basePath   = Yii::getPathOfAlias('webroot');
+        $basePath   = realpath(Yii::getPathOfAlias('webroot'));
 
         // /www/root/sub -> /www/root   (baseUrl=/sub)
         if(($baseUrl = Yii::app()->request->baseUrl)!=='')
@@ -154,11 +148,14 @@ class PackageCompressor extends CClientScript
             $urls   = array();
 
             foreach(array_keys($this->cssFiles) as $file) {
-                $f = $basePath.$file;
-                if ($this->rewriteCssImages) {
-                    file_put_contents($f, Minify_CSS_UriRewriter::rewrite(file_get_contents($f), dirname($f), $basePath));
+                if ($this->rewriteCssUris) {
+                    $inFile = $basePath.$file;
+                    $outFile = $basePath.$file.'-rewrite.css';
+                    file_put_contents($outFile, Minify_CSS_UriRewriter::rewrite(file_get_contents($inFile), dirname($inFile), $basePath));
+                } else {
+                    $outFile = $basePath.$file;
                 }
-                $files[] = $f;
+                $files[] = $outFile;
             }
 
             $fileName = $this->compressFiles($name,'css',$files);
